@@ -1,0 +1,4 @@
+pretrained_models/
+*.flac
+*.wav
+**/__pycache__/
