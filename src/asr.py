@@ -69,8 +69,8 @@ def denoise(model_dir, speech_dir):
     commands = [
         f"echo {password}",
         f"sudo -S cp {speech_dir} {noisy_dir}",
-        f"python -m denoiser.denoiser.enhance --dns48 --noisy_dir={noisy_dir} --out_dir={clean_dir}"
-        # f"python -m denoiser.denoiser.enhance --model_path={model_dir} --noisy_dir={noisy_dir} --out_dir={clean_dir}"
+        # f"python -m denoiser.denoiser.enhance --dns48 --noisy_dir={noisy_dir} --out_dir={clean_dir}"
+        f"python -m denoiser.denoiser.enhance --model_path={model_dir} --noisy_dir={noisy_dir} --out_dir={clean_dir}"
     ]
 
     for command in commands:
