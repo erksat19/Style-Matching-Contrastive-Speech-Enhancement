@@ -1,6 +1,7 @@
 import os
 import csv
 
+
 def parse_metadata(metadata_dir):
     stt_dict = dict()
     with open(metadata_dir) as metadata_file:
@@ -9,6 +10,4 @@ def parse_metadata(metadata_dir):
         for row in csv_reader: # ID, duration, wav, spk_id, wrd
             stt_dict[row[2]] = row[4]
 
-    # for speech_dir, text in stt_dict.items():
-    #     print(f"{speech_dir} : {text}")
     return stt_dict

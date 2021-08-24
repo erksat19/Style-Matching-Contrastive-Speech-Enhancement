@@ -1,0 +1,4 @@
+source_dir: speechbrain/asr-crdnn-rnnlm-librispeech
+save_dir: pretrained_models/asr-crdnn-rnnlm-librispeech
+metadata_dir: /home/data/LibriSpeech/test-other.csv
+denoising_model_dir: pretrained_models/dns48.th
