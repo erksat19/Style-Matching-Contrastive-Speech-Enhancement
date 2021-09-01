@@ -9,5 +9,4 @@ def parse_metadata(metadata_dir):
         next(csv_reader) # omit first line
         for row in csv_reader: # ID, duration, wav, spk_id, wrd
             stt_dict[row[2]] = row[4]
-
     return stt_dict

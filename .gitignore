@@ -2,6 +2,7 @@
 
 pretrained_models/
 outputs/
+dataset/
 
 *.flac
 *.wav

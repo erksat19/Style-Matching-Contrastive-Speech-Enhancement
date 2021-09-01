@@ -1,4 +1,13 @@
-source_dir: speechbrain/asr-crdnn-rnnlm-librispeech
-save_dir: pretrained_models/asr-crdnn-rnnlm-librispeech
-metadata_dir: /home/data/LibriSpeech/test-other.csv
-denoising_model_dir: pretrained_models/dns48.th
+asr:
+  source_dir: speechbrain/asr-crdnn-rnnlm-librispeech
+  save_dir: pretrained_models/asr-crdnn-rnnlm-librispeech
+
+dataset:
+  metadata_dir: /home/data/LibriSpeech/test-other.csv
+
+denoiser:
+  calculate: true
+  model_dir: pretrained_models/best.th
+  repository_dir: denoiser
+  noisy_dir: datasets/noisy
+  clean_dir: datasets/clean
