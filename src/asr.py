@@ -61,22 +61,15 @@ def denoise(args, stt_dict):
     noisy_dir = os.path.abspath(args["denoiser"]["noisy_dir"])
     clean_dir = os.path.abspath(args["denoiser"]["clean_dir"])
 
-    print("1")
-
     shutil.rmtree(noisy_dir, ignore_errors = True)
     shutil.rmtree(clean_dir, ignore_errors = True)
     os.makedirs(noisy_dir)
     os.makedirs(clean_dir)
 
-    print("2")
-
     for speech_dir, ground_truth in stt_dict.items():
         shutil.copy(speech_dir, noisy_dir)
         enhanced_speech_dir = os.path.abspath(os.path.join(clean_dir, os.path.basename(speech_dir).split(".")[0] + "_enhanced.wav"))
         enhanced_stt_dict[enhanced_speech_dir] = ground_truth
-
-    print("3")
-    cur_time = time.time()
 
     commands = [
          f"python -m denoiser.enhance --model_path={model_dir} --noisy_dir={noisy_dir} --out_dir={clean_dir}"
@@ -89,9 +82,6 @@ def denoise(args, stt_dict):
             capture_output = True,
             text = True
         )
-
-    print("4", time.time() - cur_time)
-
     return enhanced_stt_dict
 
 
@@ -102,11 +92,8 @@ def main(args):
     asr_model = load_asr_model(args["asr"]["source_dir"], args["asr"]["save_dir"])
     stt_dict = dataloader.parse_metadata(args["dataset"]["metadata_dir"])
 
-    print("before denoising")
     if args["denoiser"]["calculate"]:
         stt_dict = denoise(args, stt_dict)
-    print("after denoising")
-
     wer = calculate_wer(asr_model, stt_dict)
     print(wer)
 
