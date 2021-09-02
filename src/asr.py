@@ -49,8 +49,6 @@ def calculate_wer(asr_model, stt_dict):
         total_ins += wer_result_dict["Ins"]
         total_del += wer_result_dict["Del"]
 
-        print(total_len, total_sub, total_ins, total_del)
-
     wer = round((total_sub + total_ins + total_del) / total_len, 3) * 100
     return wer
 
@@ -72,7 +70,8 @@ def denoise(args, stt_dict):
         enhanced_stt_dict[enhanced_speech_dir] = ground_truth
 
     commands = [
-         f"python -m denoiser.enhance --model_path={model_dir} --noisy_dir={noisy_dir} --out_dir={clean_dir}"
+        #  f"python -m denoiser.enhance --model_path={model_dir} --noisy_dir={noisy_dir} --out_dir={clean_dir}"
+         f"python -m denoiser.enhance --dns48 --noisy_dir={noisy_dir} --out_dir={clean_dir}"
     ]
     for command in commands:
         result = subprocess.run(

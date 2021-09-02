@@ -6,7 +6,7 @@ dataset:
   metadata_dir: /home/data/LibriSpeech/test-other.csv
 
 denoiser:
-  calculate: true
+  calculate: false
   model_dir: pretrained_models/best.th
   repository_dir: denoiser
   noisy_dir: datasets/noisy
