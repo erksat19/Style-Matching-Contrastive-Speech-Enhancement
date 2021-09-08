@@ -71,7 +71,7 @@ def denoise(args, stt_dict):
 
     commands = [
         #  f"python -m denoiser.enhance --model_path={model_dir} --noisy_dir={noisy_dir} --out_dir={clean_dir}"
-         f"python -m denoiser.enhance --dns48 --noisy_dir={noisy_dir} --out_dir={clean_dir}"
+         f"python -m denoiser.enhance --valentini_nc --noisy_dir={noisy_dir} --out_dir={clean_dir}"
     ]
     for command in commands:
         result = subprocess.run(
@@ -89,7 +89,7 @@ def main(args):
         disable_logger(logger_name)
 
     asr_model = load_asr_model(args["asr"]["source_dir"], args["asr"]["save_dir"])
-    stt_dict = dataloader.parse_metadata(args["dataset"]["metadata_dir"])
+    stt_dict = dataloader.get_stt_dict(args["dataset"]["metadata_dir"])
 
     if args["denoiser"]["calculate"]:
         stt_dict = denoise(args, stt_dict)

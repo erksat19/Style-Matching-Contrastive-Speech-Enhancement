@@ -6,8 +6,19 @@ dataset:
   metadata_dir: /home/data/LibriSpeech/test-other.csv
 
 denoiser:
-  calculate: false
+  calculate: true
   model_dir: pretrained_models/best.th
   repository_dir: denoiser
   noisy_dir: datasets/noisy
   clean_dir: datasets/clean
+
+style_encoder:
+  metadata_dir: /home/data/LibriSpeech/train-clean-100.csv
+  # metadata_dir: /home/data/LibriSpeech/test-clean.csv
+  out_dir: outputs
+  weight_dir: null
+
+  lr: 1e-4
+  batch_size: 64
+  epochs: 200
+  train_ratio: 0.8
