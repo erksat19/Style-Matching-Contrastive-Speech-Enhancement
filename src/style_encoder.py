@@ -1,10 +1,3 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
-# author: adefossez
-
 import os
 import math
 from time import gmtime, strftime
@@ -78,7 +71,6 @@ class StyleEncoder(nn.Module):
 
     def forward(self, mel_spectrogram):
         # mel_spectrogram: (batch_size, n_mels, seq_len)
-        # TODO: need to use log-mel spectrogram?
         mean = mel_spectrogram.mean(dim=1, keepdim=True)
         std = mel_spectrogram.std(dim=1, keepdim=True)
         normalized_mel_spectrogram = (mel_spectrogram - mean) / (self.floor + std)
@@ -91,6 +83,17 @@ class StyleEncoder(nn.Module):
         out = self.final_layer(out)
         return out
 
+    def get_style_vector(self, mel_spectrogram):
+        mean = mel_spectrogram.mean(dim=1, keepdim=True)
+        std = mel_spectrogram.std(dim=1, keepdim=True)
+        normalized_mel_spectrogram = (mel_spectrogram - mean) / (self.floor + std)
+
+        # batch
+        normalized_mel_spectrogram = normalized_mel_spectrogram.permute(2, 0, 1) # (seq_len, batch_size, n_mels)
+        out, _ = self.lstm(normalized_mel_spectrogram)
+        out = out[-1, :, :]
+        out = self.projection_layer(out)
+        return out
 
 def save_model(model, out_dir, epoch, loss, val_loss):
     if not os.path.exists(out_dir):
@@ -100,12 +103,23 @@ def save_model(model, out_dir, epoch, loss, val_loss):
 
 
 def plot(history, out_dir, training_start_time):
-    plt.title("loss vs epoch")
+    plt.subplot(2, 1, 1)
+    plt.title('accuracy vs epoch')
+    plt.plot(history['accuracy'], 'orange')
+    plt.plot(history['val_accuracy'], 'green')
+    plt.legend(['accuracy', 'val_accuracy'], loc = 'upper right')
+    plt.xlabel('epoch')
+    plt.ylabel('accuracy')
+
+    plt.subplot(2, 1, 2)
+    plt.title('loss vs epoch')
     plt.plot(history['loss'], 'orange')
     plt.plot(history['val_loss'], 'green')
     plt.legend(['loss', 'val_loss'], loc = 'upper right')
     plt.xlabel('epoch')
     plt.ylabel('loss')
+
+    plt.tight_layout()
     plt.savefig(os.path.join(out_dir, f"training_result_{training_start_time}.png"))
 
 
@@ -121,52 +135,65 @@ def train(args):
     loss_function = nn.CrossEntropyLoss()
     optimizer = optim.Adam(params=model.parameters(), lr=float(args["style_encoder"]["lr"]))
     epochs = args["style_encoder"]["epochs"]
-    history = {"loss": [], "val_loss": []}
+    history = {"loss" : [], "val_loss" : [], "accuracy" : [], "val_accuracy" : []}
     training_start_time = strftime("%Y_%m_%d_%H:%M:%S", gmtime())
 
-    for epoch in range(epochs):
-        print(f"Epoch {epoch + 1}/{epochs}")
-        epoch_train_loss = 0
-        epoch_validation_loss = 0
+    for epoch in range(1, epochs + 1):
+        print(f"Epoch {epoch}/{epochs}")
+        epoch_train_size, epoch_validation_size = 0, 0
+        epoch_train_loss, epoch_validation_loss = 0, 0
+        epoch_train_correct, epoch_validation_correct = 0, 0
 
         # train
         for item in tqdm(train_dataloader):
+            model.train()
             speech_dir, speaker_id = item["speech_dir"], item["speaker_id"].to(device)
-            mel_spectrogram = preprocessor.get_mel_spectrogram(speech_dir).to(device)
+            mel_spectrogram = preprocessor.get_mel_spectrogram_from_speech_dir(speech_dir).to(device)
+
             output_distribution = model(mel_spectrogram).to(device)
 
             loss = loss_function(output_distribution, speaker_id)
             optimizer.zero_grad()
             loss.backward()
-            epoch_train_loss += loss.cpu().detach().numpy()
             optimizer.step()
 
+            epoch_train_size += len(speech_dir)
+            epoch_train_loss += loss.cpu().detach().numpy()
+            epoch_train_correct += int(torch.sum(torch.argmax(output_distribution.data, -1) == speaker_id))
+
             gc.collect()
-            torch.cuda.empty_cache()
+            if "cuda" in device:
+                torch.cuda.empty_cache()
 
         # validation
         for item in tqdm(validation_dataloader):
+            model.eval()
             speech_dir, speaker_id = item["speech_dir"], item["speaker_id"].to(device)
-            mel_spectrogram = preprocessor.get_mel_spectrogram(speech_dir).to(device)
+            mel_spectrogram = preprocessor.get_mel_spectrogram_from_speech_dir(speech_dir).to(device)
             output_distribution = model(mel_spectrogram).to(device)
 
             loss = loss_function(output_distribution, speaker_id)
-            optimizer.zero_grad()
-            loss.backward()
+
+            epoch_validation_size += len(speech_dir)
             epoch_validation_loss += loss.cpu().detach().numpy()
-            optimizer.step()
+            epoch_validation_correct += int(torch.sum(torch.argmax(output_distribution.data, -1) == speaker_id))
 
             gc.collect()
-            torch.cuda.empty_cache()
+            if "cuda" in device:
+                torch.cuda.empty_cache()
 
-        epoch_train_loss /= len(train_dataloader)
-        epoch_validation_loss /= len(validation_dataloader)
+        epoch_train_loss /= epoch_train_size
+        epoch_validation_loss /= epoch_validation_size
+        epoch_train_correct /= epoch_train_size
+        epoch_validation_correct /= epoch_validation_size
 
         history["loss"].append(epoch_train_loss)
         history["val_loss"].append(epoch_validation_loss)
+        history["accuracy"].append(epoch_train_correct)
+        history["val_accuracy"].append(epoch_validation_correct)
 
-        print(f"loss : {epoch_train_loss:.6f}, val_loss : {epoch_validation_loss:.6f}")
-        save_model(model, args["style_encoder"]["out_dir"], epoch + 1, epoch_train_loss, epoch_validation_loss)
+        print(f"loss : {epoch_train_loss:.6f}, val_loss : {epoch_validation_loss:.6f}, accuracy : {epoch_train_correct:.4f}, val_accuracy : {epoch_validation_correct:.4f}")
+        save_model(model, args["style_encoder"]["out_dir"], epoch, epoch_train_loss, epoch_validation_loss)
         plot(history, args["style_encoder"]["out_dir"], training_start_time)
 
 

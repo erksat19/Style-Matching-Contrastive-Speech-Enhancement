@@ -7,17 +7,16 @@ import time
 import logging
 import warnings
 warnings.filterwarnings("ignore")
-from functools import partial
 import argparse
 import shutil
 
 import torch
-import torchaudio
 if torch.cuda.is_available():
     torch.cuda.set_device(0)
     device = "cuda"
 else:
     device = "cpu"
+import torchaudio
 from speechbrain.pretrained import EncoderDecoderASR
 
 import dataloader
@@ -42,6 +41,12 @@ def calculate_wer(asr_model, stt_dict):
     total_len, total_sub, total_ins, total_del = 0, 0, 0, 0
     for speech_dir, ground_truth in stt_dict.items():
         hypothesis = asr_model.transcribe_file(path = speech_dir)
+
+        # remove symbolic link created by transcribe_file function
+        sym_link = os.path.split(speech_dir)[-1]
+        if os.path.exists(sym_link):
+            os.remove(sym_link)
+
         wer_result_dict = evaluate.wer(ground_truth, hypothesis)
 
         total_len += len(ground_truth.split())
@@ -70,8 +75,10 @@ def denoise(args, stt_dict):
         enhanced_stt_dict[enhanced_speech_dir] = ground_truth
 
     commands = [
-        #  f"python -m denoiser.enhance --model_path={model_dir} --noisy_dir={noisy_dir} --out_dir={clean_dir}"
-         f"python -m denoiser.enhance --valentini_nc --noisy_dir={noisy_dir} --out_dir={clean_dir}"
+        "alias python=\"python3.8\"",
+        "alias pip=\"python3.8 -m pip\"",
+        f"python3.8 -m denoiser.enhance --valentini_nc --noisy_dir={noisy_dir} --out_dir={clean_dir}"
+        # f"python -m denoiser.enhance --model_path={model_dir} --noisy_dir={noisy_dir} --out_dir={clean_dir}"
     ]
     for command in commands:
         result = subprocess.run(
@@ -84,17 +91,66 @@ def denoise(args, stt_dict):
     return enhanced_stt_dict
 
 
+def generate_noisy_speech(clean_speech, target_snr): # generate gaussian noise
+    if len(clean_speech.shape) > 1:
+        clean_speech = torch.mean(clean_speech, dim=0)
+    noise = torch.normal(mean=0, std=1.0, size=clean_speech.shape)
+
+    rms_clean_speech = torch.sqrt(torch.mean(torch.square(clean_speech)))
+    rms_noise = torch.sqrt(torch.mean(torch.square(noise)))
+    current_snr = 10 * torch.log10(rms_clean_speech / rms_noise)
+
+    adjustment_constnat = 10 ** ((current_snr - target_snr) / 10)
+    noise *= adjustment_constnat
+    noisy_speech = clean_speech + noise
+    if torch.max(torch.abs(noisy_speech)) >= 32767: # adjust maximum value
+        noise_speech *= 32767 / torch.max(torch.abs(noisy_speech))
+    return noisy_speech
+
+
+def generate_noisy_speech_from_speech_dir(stt_dict, root_dir, target_snr):
+    noisy_stt_dict = dict()
+
+    out_dir = os.path.join(root_dir, "SNR_" + str(target_snr))
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
+    for speech_dir, ground_truth in stt_dict.items():
+        clean_speech, sample_rate = torchaudio.load(speech_dir)
+        noisy_speech = generate_noisy_speech(clean_speech, target_snr)
+        file_dir = os.path.join(out_dir, os.path.split(speech_dir)[-1])
+        torchaudio.save(file_dir, noisy_speech.unsqueeze(0), sample_rate)
+        noisy_stt_dict[file_dir] = ground_truth
+    return noisy_stt_dict
+
+
+def do_wer_curve_experiment(args):
+    experimental_result = dict()
+    stt_dict = dataloader.get_stt_dict(args["dataset"]["metadata_dir"])
+    asr_model = load_asr_model(args["asr"]["source_dir"], args["asr"]["save_dir"])
+
+    for target_snr in ["original"] + args["wer_curve_experiment"]["snr_list"]:
+        if target_snr == "original":
+            noisy_stt_dict = stt_dict
+        else:
+            noisy_stt_dict = generate_noisy_speech_from_speech_dir(stt_dict, args["wer_curve_experiment"]["root_dir"], target_snr)
+
+        enhanced_stt_dict = denoise(args, noisy_stt_dict)
+        noisy_wer = calculate_wer(asr_model, noisy_stt_dict)
+        enhanced_wer = calculate_wer(asr_model, enhanced_stt_dict)
+
+        experimental_result["SNR_" + str(target_snr)] = {
+            "noisy": noisy_wer,
+            "enhanced": enhanced_wer
+        }
+    return experimental_result
+        
+
 def main(args):
     for logger_name in ['speechbrain.pretrained.fetching', 'requests.packages.urllib3.connectionpool', 'speechbrain.utils.parameter_transfer']:
         disable_logger(logger_name)
-
-    asr_model = load_asr_model(args["asr"]["source_dir"], args["asr"]["save_dir"])
-    stt_dict = dataloader.get_stt_dict(args["dataset"]["metadata_dir"])
-
-    if args["denoiser"]["calculate"]:
-        stt_dict = denoise(args, stt_dict)
-    wer = calculate_wer(asr_model, stt_dict)
-    print(wer)
+    experimental_result = do_wer_curve_experiment(args)
+    print(experimental_result)
 
 
 if __name__ == "__main__":

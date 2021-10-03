@@ -3,7 +3,7 @@ asr:
   save_dir: pretrained_models/asr-crdnn-rnnlm-librispeech
 
 dataset:
-  metadata_dir: /home/data/LibriSpeech/test-other.csv
+  metadata_dir: /home/data/LibriSpeech/test-mini.csv
 
 denoiser:
   calculate: true
@@ -14,11 +14,15 @@ denoiser:
 
 style_encoder:
   metadata_dir: /home/data/LibriSpeech/train-clean-100.csv
-  # metadata_dir: /home/data/LibriSpeech/test-clean.csv
+  # metadata_dir: /home/data/LibriSpeech/test-small.csv
   out_dir: outputs
   weight_dir: null
 
-  lr: 1e-4
-  batch_size: 64
-  epochs: 200
+  lr: 3e-4
+  batch_size: 32
+  epochs: 100
   train_ratio: 0.8
+
+wer_curve_experiment:
+  snr_list: [-30, -20, -10]
+  root_dir: outputs/wer_curve_experiment
