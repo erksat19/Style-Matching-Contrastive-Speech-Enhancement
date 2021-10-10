@@ -7,3 +7,4 @@
 - [SpeechBrain](https://huggingface.co/speechbrain)
 - [LibriSpeech ASR Corpus](https://www.openslr.org/12)
 - [DNS dataset](https://github.com/microsoft/DNS-Challenge)
+- [MS-SNSD](https://github.com/microsoft/MS-SNSD)
