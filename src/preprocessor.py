@@ -37,7 +37,7 @@ def get_mel_spectrogram(waveform, sample_rate=16000, max_time=3):
     else: # duration < max_time * sample_rate
         waveform = torch.cat(
             [waveform, torch.tensor([0 for _ in range(max_time * sample_rate - duration)]).to(device)],
-            dim = 0
+            dim=0
         )
     mel_spectrogram = mel_spectrogram_transformer(waveform)
     return mel_spectrogram

@@ -3,11 +3,13 @@ asr:
   save_dir: pretrained_models/asr-crdnn-rnnlm-librispeech
 
 dataset:
-  metadata_dir: /home/data/LibriSpeech/test-mini.csv
+  metadata_dir: /home/data/LibriSpeech/dev-clean.csv
 
 denoiser:
   calculate: true
-  model_dir: pretrained_models/best.th
+  use_pretrained_model: true
+  pretrained_model_dir: dns64
+  model_dir: dirpretrained_models/best.th
   repository_dir: denoiser
   noisy_dir: datasets/noisy
   clean_dir: datasets/clean
@@ -24,5 +26,5 @@ style_encoder:
   train_ratio: 0.8
 
 wer_curve_experiment:
-  snr_list: [-30, -20, -10]
+  snr_list: [0, 5, 10, 15, 20, 25, 30]
   root_dir: outputs/wer_curve_experiment
